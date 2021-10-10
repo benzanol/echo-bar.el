@@ -4,6 +4,7 @@
 (defvar echo-bar-max-message-length 300
   "Maximum length of message to display at the left side of the echo area")
 
+(echo-bar-display)
 (defun echo-bar-display (&rest args)
   (unless echo-bar--inhibit
     (let* ((echo-bar--inhibit t)
@@ -31,14 +32,13 @@
             (save-window-excursion
               (switch-to-buffer " *Echo Area 0*")
               (delete-other-windows)
-              (delete-region (point-min) (point-max))
-              (insert right-text)
-              (car (window-text-pixel-size nil (point-min) (point-max)))))
+              (save-excursion
+                (delete-region (point-min) (point-max))
+                (insert right-text)
+                (car (window-text-pixel-size nil (point-min) (point-max))))))
 
-           (align-column (- (window-pixel-width (cadr (window-tree))) right-text-width))
-           (align-space (propertize " " 'display `(space . (:align-to (,align-column)))))
-
-           (tall-space (propertize " " 'display '((raise -0.15) (height 1.5)))))
+           (align-column (- (frame-pixel-width nil) right-text-width 30))
+           (align-space (propertize " " 'display `(space . (:align-to (,align-column))))))
 
       (if (minibufferp (current-buffer))
           (message "%s%s" align-space right-text)
@@ -56,5 +56,7 @@
                   ((>= percent 15) "")
                   (t ""))
             percent)))
+
+(with-current-buffer " *Echo Area 0*" (buffer-face-set 'fixed-pitch))
 
 (add-hook 'post-command-hook 'echo-bar-display)
