@@ -53,9 +53,14 @@ and the minibuffer isn't active."
 
 (defun echo-bar-minibuffer-display ()
   "Display the echo bar in the minibuffer"
-  (let ((text-plist (echo-bar-text-plist)))
+  (let* ((text-plist (echo-bar-text-plist)))
     (message "%s[%s]"
-             (plist-get text-plist :space)
+             ;; Decrease the align property by 3
+             (--> (plist-get text-plist :space)
+               (get-text-property 0 'display it)
+               (- (caddr it) 3)
+               (list 'space :align-to it)
+               (propertize " " 'display it))
              (plist-get text-plist :right))))
 
 (defun echo-bar-text-plist ()
@@ -75,7 +80,7 @@ and the minibuffer isn't active."
          (left-max-width (- (window-text-width (cadr (window-tree)))
                             (length right-text) echo-bar-center-padding))
          (left-text (substring previous-echo 0 (min (length previous-echo) left-max-width))))
-  (list :left left-text :right right-text :space align-space)))
+    (list :left left-text :right right-text :space align-space)))
 
 
 ;; User customization
