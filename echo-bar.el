@@ -7,7 +7,7 @@
 (defvar echo-bar-fast-timer (run-with-timer 0 0.01 'echo-bar-timer-display)
   "Constantly check whether the echo bar needs to be updated")
 
-(defvar echo-bar-slow-timer (run-with-timer 0 60 'echo-bar-display)
+(defvar echo-bar-slow-timer (run-with-timer 0 1 'echo-bar-display)
   "Always update the echo bar every minute")
 
 ;; Update the echo bar after every command
@@ -20,24 +20,27 @@
 (defun echo-bar-timer-display (&rest args)
   "Display the echo bar only if it isn't already shown,
 and the minibuffer isn't active."
-  (unless echo-bar--inhibit
-    (let* ((echo-bar--inhibit t)
-           (message-log-max nil)
-           (inhibit-read-only t))
-      (unless (or (minibufferp nil)
-                  (with-current-buffer " *Echo Area 0*"
-                    (and (> (point-max) 1) (string= (buffer-substring 1 2) "§"))))
-        (echo-bar-normal-display)))))
+  (ignore-errors
+    (unless echo-bar--inhibit
+      (let* ((echo-bar--inhibit t)
+             (message-log-max nil)
+             (inhibit-read-only t))
+        (unless (minibufferp nil)
+          (if (with-current-buffer " *Echo Area 0*"
+                (and (> (point-max) 1) (string= (buffer-substring 1 2) "§")))
+              (message (with-current-buffer " *Echo Area 0*" (buffer-string)))
+            (echo-bar-normal-display)))))))
 
 (defun echo-bar-display (&rest args)
   "Display the echo bar either in the minibuffer, or in the echo area"
-  (unless echo-bar--inhibit
-    (let* ((echo-bar--inhibit t)
-           (message-log-max nil)
-           (inhibit-read-only t))
-      (if (minibufferp nil)
-          (echo-bar-minibuffer-display)
-        (echo-bar-normal-display)))))
+  (ignore-errors
+    (unless echo-bar--inhibit
+      (let* ((echo-bar--inhibit t)
+             (message-log-max nil)
+             (inhibit-read-only t))
+        (if (minibufferp nil)
+            (echo-bar-minibuffer-display)
+          (echo-bar-normal-display))))))
 
 
 (defun echo-bar-normal-display ()
@@ -91,6 +94,6 @@ and the minibuffer isn't active."
 (defun echo-bar-default-function ()
   "Default value of `echo-bar-function`
 Displays the date and time in a basic format."
-  (format-time-string "%b %d - %H:%M"))
+  (format-time-string "%b %d - %H:%M:%S"))
 
 
