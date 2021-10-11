@@ -4,16 +4,66 @@
 (defvar echo-bar-center-padding 10
   "Minimum number of columns between the left and right aligned text")
 
-(defvar echo-bar-timer (run-with-timer 0 0.01 'echo-bar-display)
-  "Redraw the echo bar repeatedly")
+(defvar echo-bar-fast-timer (run-with-timer 0 0.01 'echo-bar-timer-display)
+  "Constantly check whether the echo bar needs to be updated")
 
-(defun echo-bar-calculate-text ()
+(defvar echo-bar-slow-timer (run-with-timer 0 60 'echo-bar-display)
+  "Always update the echo bar every minute")
+
+;; Update the echo bar after every command
+(add-hook 'post-command-hook 'echo-bar-display)
+
+;; Update the echo bar after any message is sent
+(advice-add 'message :after 'echo-bar-display)
+
+;; Called by the fast timer many times per second
+(defun echo-bar-timer-display (&rest args)
+  "Display the echo bar only if it isn't already shown,
+and the minibuffer isn't active."
+  (unless echo-bar--inhibit
+    (let* ((echo-bar--inhibit t)
+           (message-log-max nil)
+           (inhibit-read-only t))
+      (unless (or (minibufferp nil)
+                  (with-current-buffer " *Echo Area 0*"
+                    (and (> (point-max) 1) (string= (buffer-substring 1 2) "§"))))
+        (echo-bar-normal-display)))))
+
+(defun echo-bar-display (&rest args)
+  "Display the echo bar either in the minibuffer, or in the echo area"
+  (unless echo-bar--inhibit
+    (let* ((echo-bar--inhibit t)
+           (message-log-max nil)
+           (inhibit-read-only t))
+      (if (minibufferp nil)
+          (echo-bar-minibuffer-display)
+        (echo-bar-normal-display)))))
+
+
+(defun echo-bar-normal-display ()
+  "Display the echo bar in the echo area"
+  (interactive)
+  (let ((text-plist (echo-bar-text-plist)))
+    (message "%s%s%s%s%s"
+             (propertize "§" 'invisible t)
+             (plist-get text-plist :left)
+             (propertize " " 'display '((height 1.5) (raise -0.1)))
+             (plist-get text-plist :space)
+             (plist-get text-plist :right))))
+
+(defun echo-bar-minibuffer-display ()
+  "Display the echo bar in the minibuffer"
+  (let ((text-plist (echo-bar-text-plist)))
+    (message "%s[%s]"
+             (plist-get text-plist :space)
+             (plist-get text-plist :right))))
+
+(defun echo-bar-text-plist ()
+  "Figure out the text to be displayed the echo bar"
   (let* ((right-text (funcall echo-bar-function))
-
          (align-position (- (window-text-width (cadr (window-tree))) (length right-text)))
-         (align-space (propertize "§" 'display `(space :align-to ,(- align-position 2))))
+         (align-space (propertize " " 'display `(space :align-to ,align-position)))
 
-         ;; The text that would otherwise be displayed in the minibuffer
          (echo-0 (with-current-buffer " *Echo Area 0*" (buffer-string)))
          (previous-echo
           (with-current-buffer " *Echo Area 1*"
@@ -22,39 +72,13 @@
             (when (and (> (point-max) 1) (string= (buffer-substring 1 2) "§"))
               (delete-region (point-min) (point-max)))
             (buffer-string)))
-
          (left-max-width (- (window-text-width (cadr (window-tree)))
                             (length right-text) echo-bar-center-padding))
          (left-text (substring previous-echo 0 (min (length previous-echo) left-max-width))))
-    (list :left left-text :right right-text :space align-space)))
-
-(defun echo-bar-display (&rest args)
-  "Compile and display the echo bar text"
-  (interactive)
-  (unless (or echo-bar--inhibit
-              (minibufferp nil)
-              (with-current-buffer " *Echo Area 0*"
-                (and (> (point-max) 1) (string= (buffer-substring 1 2) "§"))))
-    (let* ((message-log-max nil)
-           (inhibit-read-only t)
-           (echo-bar--inhibit t)
-           (text-plist (echo-bar-calculate-text)))
-      (message "%s%s%s%s%s"
-               (propertize "§" 'invisible t)
-               (plist-get text-plist :left)
-               (propertize " " 'display '((height 1.5) (raise -0.1)))
-               (plist-get text-plist :space)
-               (plist-get text-plist :right)))))
+  (list :left left-text :right right-text :space align-space)))
 
 
-(add-hook 'post-command-hook 'echo-bar-display)
-
-;; Trigger redisplay after any message is sent
-(advice-add 'message :after 'echo-bar-display)
-
-;; Trigger redisplay before typing a character in vertico
-(advice-add 'vertico--exhibit :before 'echo-bar-display)
-
+;; User customization
 
 (defvar echo-bar-function 'echo-bar-default-function
   "Function that returns the text displayed in the echo bar")
