@@ -42,7 +42,6 @@ and the minibuffer isn't active."
             (echo-bar-minibuffer-display)
           (echo-bar-normal-display))))))
 
-
 (defun echo-bar-normal-display ()
   "Display the echo bar in the echo area"
   (interactive)
@@ -86,6 +85,16 @@ and the minibuffer isn't active."
     (list :left left-text :right right-text :space align-space)))
 
 
+;; Make sure the echo area is cleared after each command
+
+(defun echo-bar-clear-message ()
+  "Clear the `Echo Area 1` buffer after clearing messages"
+  (with-current-buffer " *Echo Area 1*"
+    (delete-region (point-min) (point-max))))
+
+(add-hook 'echo-area-clear-hook 'echo-bar-clear-message)
+
+
 ;; User customization
 
 (defvar echo-bar-function 'echo-bar-default-function
@@ -95,5 +104,3 @@ and the minibuffer isn't active."
   "Default value of `echo-bar-function`
 Displays the date and time in a basic format."
   (format-time-string "%b %d - %H:%M:%S"))
-
-
