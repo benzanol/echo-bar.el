@@ -4,15 +4,6 @@
 (defvar echo-bar-center-padding 100
   "Minimum width in pixels between the left and right aligned text")
 
-(add-hook 'post-command-hook 'echo-bar-display)
-(add-hook 'echo-area-clear-hook 'echo-bar-display)
-
-;; Trigger redisplay after any message is sent
-(advice-add 'message :after 'echo-bar-display)
-
-;; Trigger redisplay before typing a character in vertico
-(advice-add 'vertico--exhibit :before 'echo-bar-display)
-
 (defun echo-bar-display (&rest args)
   "Compile and display the echo bar text"
   (interactive)
@@ -25,10 +16,7 @@
            (echo-0 (with-current-buffer " *Echo Area 0*" (buffer-string)))
 
            ;; The right aligned text
-           (text (format "%s  |  %s  |  %s"
-                         (echo-bar-battery-format)
-                         (format-time-string "  %b %d")
-                         (format-time-string "  %H:%M")))
+           (text (funcall echo-bar-function))
 
            ;; The text that would otherwise be displayed in the minibuffer
            (previous-echo
@@ -78,18 +66,22 @@
                  (setq-local truncate-lines nil))
         (message "%s%s%s%s%s" indicator left-text tall-space align-space text)))))
 
-(make-string 500 ?a)
+(add-hook 'post-command-hook 'echo-bar-display)
+(add-hook 'echo-area-clear-hook 'echo-bar-display)
 
-(defun echo-bar-battery-format ()
-  "Return a string containing a formatted battery display for the echo bar"
-  (let* ((status (funcall battery-status-function))
-         (percent (round (string-to-number (battery-format "%p" status))))
-         (power-method (battery-format "%L" status)))
-    (format "%s %s   %s%%"
-            (if (string= power-method "AC") "⚡" "")
-            (cond ((>= percent 95) "")
-                  ((>= percent 70) "")
-                  ((>= percent 50) "")
-                  ((>= percent 15) "")
-                  (t ""))
-            percent)))
+;; Trigger redisplay after any message is sent
+(advice-add 'message :after 'echo-bar-display)
+
+;; Trigger redisplay before typing a character in vertico
+(advice-add 'vertico--exhibit :before 'echo-bar-display)
+
+
+(defvar echo-bar-function 'echo-bar-default-function
+  "Function that returns the text displayed in the echo bar")
+
+(defun echo-bar-default-function ()
+  "Default value of `echo-bar-function`
+Displays the date and time in a basic format."
+  (format-time-string "%b %d - %H:%M"))
+
+
