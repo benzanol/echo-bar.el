@@ -4,47 +4,32 @@
 (defvar echo-bar-max-message-length 300
   "Maximum length of message to display at the left side of the echo area")
 
-(echo-bar-display)
 (defun echo-bar-display (&rest args)
-  (unless echo-bar--inhibit
-    (let* ((echo-bar--inhibit t)
-           (message-log-max nil)
+  (interactive)
+  (ignore-errors
+    (let* ((message-log-max nil)
            (inhibit-read-only t)
-           (previous-contents
-            (replace-regexp-in-string
-             "^⟨ \\(.*\\) ⟩.*$" "\\1"
-             (with-current-buffer " *Echo Area 0*"
-               (buffer-substring (point-min) (point-max)))))
-           (left-text
-            (format "%s %s %s"
-                    #("⟨" 0 1 (invisible t))
-                    (substring
-                     previous-contents 0
-                     (min (length previous-contents)
-                          echo-bar-max-message-length))
-                    #("⟩" 0 1 (invisible t))))
-           (right-text
-            (format "%s  |  %s  |  %s"
-                    (qv/battery-format)
-                    (format-time-string "  %b %d")
-                    (format-time-string "  %H:%M")))
-           (right-text-width
-            (save-window-excursion
-              (switch-to-buffer " *Echo Area 0*")
-              (delete-other-windows)
-              (save-excursion
-                (delete-region (point-min) (point-max))
-                (insert right-text)
-                (car (window-text-pixel-size nil (point-min) (point-max))))))
+           (text (format "%s  |  %s  |  %s "
+                         (echo-bar-battery-format)
+                         (format-time-string "  %b %d")
+                         (format-time-string "  %H:%M")))
+           (text-width (save-window-excursion
+                         (when (minibufferp nil) (other-window 1))
+                         (delete-other-windows)
+                         (with-temp-buffer
+                           (switch-to-buffer " *temp*")
+                           (insert text)
+                           (car (window-text-pixel-size (selected-window) (point-min) (point-max))))))
+           (align-column (- (frame-text-width) text-width))
+           (previous-output (with-current-buffer " *Echo Area 1*" (buffer-string)))
+           (align-space (propertize "-" 'display `(space . (:align-to (,align-column)))))
+           (tall-space (propertize " " 'display '((height 1.5) (raise -0.1)))))
 
-           (align-column (- (frame-pixel-width nil) right-text-width 30))
-           (align-space (propertize " " 'display `(space . (:align-to (,align-column))))))
+      (if (minibufferp nil)
+          (message "%s%s" align-space text)
+        (message "%s%s%s%s" previous-output tall-space align-space text)))))
 
-      (if (minibufferp (current-buffer))
-          (message "%s%s" align-space right-text)
-        (message "%s%s%s" left-text align-space right-text)))))
-
-(defun qv/battery-format ()
+(defun echo-bar-battery-format ()
   (let* ((status (funcall battery-status-function))
          (percent (round (string-to-number (battery-format "%p" status))))
          (power-method (battery-format "%L" status)))
@@ -56,7 +41,3 @@
                   ((>= percent 15) "")
                   (t ""))
             percent)))
-
-(with-current-buffer " *Echo Area 0*" (buffer-face-set 'fixed-pitch))
-
-(add-hook 'post-command-hook 'echo-bar-display)
