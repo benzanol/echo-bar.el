@@ -51,13 +51,13 @@
 
           ;; Calculated the length of the left aligned text
           (setq left-width (- (frame-text-width) right-width echo-bar-center-padding))
-          (delete-region (point-min) (point-max))
-          (setq start-x (car (posn-x-y (event-start nil)))
-                y (cdr (posn-x-y (event-start nil))))
-          (insert (substring previous-echo 0 (min (length previous-echo) (- (window-width) 2))))
-          (setq end-x (car (posn-x-y (event-start nil))))
-          (if (< (- end-x start-x) left-width)
-              (setq left-text previous-echo)
+          (if (string= previous-echo "")
+              (setq left-text "")
+            (delete-region (point-min) (point-max))
+            (setq start-x (car (posn-x-y (event-start nil)))
+                  y (cdr (posn-x-y (event-start nil))))
+            (insert previous-echo)
+            (beginning-of-line)
             (setq left-length (- (cadr (posn-at-x-y (+ start-x left-width) y)) 4))
             (setq left-text (concat (buffer-substring (point-min) left-length) "...")))))
 
@@ -65,6 +65,7 @@
           (progn (message "%s%s%s" indicator align-space text)
                  (setq-local truncate-lines nil))
         (message "%s%s%s%s%s" indicator left-text tall-space align-space text)))))
+
 
 (add-hook 'post-command-hook 'echo-bar-display)
 (add-hook 'echo-area-clear-hook 'echo-bar-display)
