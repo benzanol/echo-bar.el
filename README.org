@@ -1,0 +1,12 @@
+#+TITLE: echo-bar.el
+Display a custom status at the end of the echo area
+
+** Customization
+Define a function that returns the text you want to be displayed at the right of the minibuffer/echo area, and then set =echo-bar-function= to the name of that function.
+
+** Screenshots
+Displayed at the end of the echo area
+[[./screenshots/echo-area-example.png]]
+
+It will also be displayed at the end of the minibuffer
+[[./screenshots/minibuffer-example.png]]
