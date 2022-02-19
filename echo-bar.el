@@ -15,6 +15,16 @@
   :group 'echo-bar
   :type 'function)
 
+(defcustom echo-bar-update-interval 1
+  "Interval in seconds between updating the echo bar contents.
+
+If nil, don't update the echo bar automatically."
+  :group 'echo-bar
+  :type 'number)
+
+(defvar echo-bar-timer nil
+  "Timer used to update the echo bar.")
+
 (define-minor-mode echo-bar-mode
   "Display text at the end of the echo area."
   :global t
@@ -25,18 +35,26 @@
 (defun echo-bar-enable ()
   "Turn on the echo bar."
   (interactive)
-  (setq echo-bar-overlays nil)
+  ;; Disable any existing echo bar to remove conflicts
+  (echo-bar-disable)
+  
+  ;; Create overlays in each echo area buffer
   (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*"))
     (with-current-buffer buf
       (remove-overlays (point-min) (point-max))
       (push (make-overlay (point-min) (point-max) nil nil t)
-            echo-bar-overlays))))
+            echo-bar-overlays)))
+  
+  ;; Start the timer to automatically update
+  (when echo-bar-update-interval
+    (run-with-timer 0 echo-bar-update-interval 'echo-bar-update)))
 
 (defun echo-bar-disable ()
   "Turn off the echo bar."
   (interactive)
   (mapc 'delete-overlay echo-bar-overlays)
-  (setq echo-bar-overlays nil))
+  (setq echo-bar-overlays nil)
+  (cancel-function-timers 'echo-bar-update))
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
