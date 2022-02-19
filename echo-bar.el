@@ -2,15 +2,13 @@
   "Display text at the end of the echo area."
   :group 'applications)
 
-(defcustom echo-bar-center-padding 10
-  "Minimum number of columns between the left and right aligned text."
+(defcustom echo-bar-right-padding 2
+  "Number of columns between the text and right margin."
   :group 'echo-bar
   :type 'number)
 
-(defcustom echo-bar-overlays nil
-  "List of overlays displaying the echo bar contents."
-  :group 'echo-bar
-  :type 'list)
+(defvar echo-bar-overlays nil
+  "List of overlays displaying the echo bar contents.")
 
 (defcustom echo-bar-function 'echo-bar-default-function
   "Function that returns the text displayed in the echo bar."
@@ -42,7 +40,7 @@
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
-  (let* ((wid (string-width text))
+  (let* ((wid (+ (string-width text) echo-bar-right-padding))
          (spc (propertize " " 'display `(space :align-to (- right-fringe ,wid))))
          (str (concat spc text)))
     (dolist (o echo-bar-overlays)
