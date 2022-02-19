@@ -25,6 +25,9 @@ If nil, don't update the echo bar automatically."
 (defvar echo-bar-timer nil
   "Timer used to update the echo bar.")
 
+(defvar echo-bar-text nil
+  "The text currently displayed in the echo bar.")
+
 (define-minor-mode echo-bar-mode
   "Display text at the end of the echo area."
   :global t
@@ -52,17 +55,32 @@ If nil, don't update the echo bar automatically."
 (defun echo-bar-disable ()
   "Turn off the echo bar."
   (interactive)
+  ;; Remove echo bar overlays
   (mapc 'delete-overlay echo-bar-overlays)
   (setq echo-bar-overlays nil)
+
+  ;; Remove text from Minibuf-0
+  (with-current-buffer " *Minibuf-0*"
+    (delete-region (point-min) (point-max)))
+
+  ;; Cancel the update timer
   (cancel-function-timers 'echo-bar-update))
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
   (let* ((wid (+ (string-width text) echo-bar-right-padding))
-         (spc (propertize " " 'display `(space :align-to (- right-fringe ,wid))))
-         (str (concat spc text)))
+         (spc (propertize " " 'display `(space :align-to (- right-fringe ,wid)))))
+    
+    (setq echo-bar-text (concat spc text))
+    
+    ;; Add the correct text to each echo bar overlay
     (dolist (o echo-bar-overlays)
-      (overlay-put o 'after-string str))))
+      (overlay-put o 'after-string echo-bar-text))
+
+    ;; Display the text in Minibuf-0
+    (with-current-buffer " *Minibuf-0*"
+      (delete-region (point-min) (point-max))
+      (insert echo-bar-text))))
 
 (defun echo-bar-update ()
   "Get new text to be displayed from `echo-bar-default-function`."
