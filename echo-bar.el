@@ -3,8 +3,9 @@
 ;; Copyright (C) 2021-2022  Adam Tillou
 
 ;; Author: Adam Tillou <qaiviq@gmail.com>
-;; Keywords: tools
+;; Keywords: convenience, tools
 ;; Version: 1.0.0
+;; Homepage: https://github.com/qaiviq/echo-bar.el
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
