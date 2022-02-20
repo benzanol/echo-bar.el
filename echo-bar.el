@@ -66,6 +66,7 @@ If nil, don't update the echo bar automatically."
 (defvar echo-bar-overlays nil
   "List of overlays displaying the echo bar contents.")
 
+;;;###autoload
 (define-minor-mode echo-bar-mode
   "Display text at the end of the echo area."
   :global t
@@ -73,6 +74,7 @@ If nil, don't update the echo bar automatically."
       (echo-bar-enable)
     (echo-bar-disable)))
 
+;;;###autoload
 (defun echo-bar-enable ()
   "Turn on the echo bar."
   (interactive)
@@ -94,6 +96,7 @@ If nil, don't update the echo bar automatically."
   (when echo-bar-minibuffer
     (add-hook 'minibuffer-setup-hook 'echo-bar--minibuffer-setup)))
 
+;;;###autoload
 (defun echo-bar-disable ()
   "Turn off the echo bar."
   (interactive)
