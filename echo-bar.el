@@ -7,13 +7,15 @@
   :group 'echo-bar
   :type 'number)
 
-(defvar echo-bar-overlays nil
-  "List of overlays displaying the echo bar contents.")
-
 (defcustom echo-bar-function 'echo-bar-default-function
   "Function that returns the text displayed in the echo bar."
   :group 'echo-bar
   :type 'function)
+
+(defcustom echo-bar-minibuffer t
+  "If non-nil, also display the echo bar when in the minibuffer."
+  :group 'echo-bar
+  :type 'boolean)
 
 (defcustom echo-bar-update-interval 1
   "Interval in seconds between updating the echo bar contents.
@@ -27,6 +29,9 @@ If nil, don't update the echo bar automatically."
 
 (defvar echo-bar-text nil
   "The text currently displayed in the echo bar.")
+
+(defvar echo-bar-overlays nil
+  "List of overlays displaying the echo bar contents.")
 
 (define-minor-mode echo-bar-mode
   "Display text at the end of the echo area."
@@ -50,7 +55,11 @@ If nil, don't update the echo bar automatically."
   
   ;; Start the timer to automatically update
   (when echo-bar-update-interval
-    (run-with-timer 0 echo-bar-update-interval 'echo-bar-update)))
+    (run-with-timer 0 echo-bar-update-interval 'echo-bar-update))
+
+  ;; Add the setup function to the minibuffer hook
+  (when echo-bar-minibuffer
+    (add-hook 'minibuffer-setup-hook 'echo-bar--minibuffer-setup)))
 
 (defun echo-bar-disable ()
   "Turn off the echo bar."
@@ -64,23 +73,38 @@ If nil, don't update the echo bar automatically."
     (delete-region (point-min) (point-max)))
 
   ;; Cancel the update timer
-  (cancel-function-timers 'echo-bar-update))
+  (cancel-function-timers 'echo-bar-update)
+
+  ;; Remove the setup function from the minibuffer hook
+  (remove-hook 'minibuffer-setup-hook 'echo-bar--minibuffer-setup))
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
   (let* ((wid (+ (string-width text) echo-bar-right-padding))
-         (spc (propertize " " 'display `(space :align-to (- right-fringe ,wid)))))
-    
+         (spc (propertize " " 'cursor 1 'display
+                          `(space :align-to (- right-fringe ,wid)))))
+
     (setq echo-bar-text (concat spc text))
+
+    ;; Remove any dead overlays from the minibuffer from the beginning of the list
+    (while (null (overlay-buffer (car echo-bar-overlays)))
+      (pop echo-bar-overlays))
     
     ;; Add the correct text to each echo bar overlay
     (dolist (o echo-bar-overlays)
-      (overlay-put o 'after-string echo-bar-text))
+      (when (overlay-buffer o)
+        (overlay-put o 'after-string echo-bar-text)))
 
     ;; Display the text in Minibuf-0
     (with-current-buffer " *Minibuf-0*"
       (delete-region (point-min) (point-max))
       (insert echo-bar-text))))
+
+(defun echo-bar--minibuffer-setup ()
+  "Setup the echo bar in the minibuffer."
+  (push (make-overlay (point-max) (point-max) nil t t) echo-bar-overlays)
+  (overlay-put (car echo-bar-overlays) 'priority 1)
+  (echo-bar-update))
 
 (defun echo-bar-update ()
   "Get new text to be displayed from `echo-bar-default-function`."
@@ -90,4 +114,4 @@ If nil, don't update the echo bar automatically."
 (defun echo-bar-default-function ()
   "Default value of `echo-bar-function`.
 Displays the date and time in a basic format."
-  (format-time-string "%b %d - %H:%M:%S"))
+  (format-time-string "%b %d | %H:%M:%S"))
