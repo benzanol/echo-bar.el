@@ -95,7 +95,7 @@ If nil, don't update the echo bar automatically."
 
   ;; Add the setup function to the minibuffer hook
   (when echo-bar-minibuffer
-    (add-hook 'minibuffer-setup-hook 'echo-bar--minibuffer-setup)))
+    (add-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup)))
 
 ;;;###autoload
 (defun echo-bar-disable ()
@@ -110,10 +110,10 @@ If nil, don't update the echo bar automatically."
     (delete-region (point-min) (point-max)))
 
   ;; Cancel the update timer
-  (cancel-function-timers 'echo-bar-update)
+  (cancel-function-timers #'echo-bar-update)
 
   ;; Remove the setup function from the minibuffer hook
-  (remove-hook 'minibuffer-setup-hook 'echo-bar--minibuffer-setup))
+  (remove-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup))
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
