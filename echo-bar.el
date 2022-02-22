@@ -35,6 +35,10 @@
 
 ;;; Code:
 
+(require 'timer)
+(require 'minibuffer)
+(require 'overlay)
+
 (defgroup echo-bar nil
   "Display text at the end of the echo area."
   :group 'applications)
