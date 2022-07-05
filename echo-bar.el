@@ -139,10 +139,10 @@ If nil, don't update the echo bar automatically."
       (when (overlay-buffer o)
         (overlay-put o 'after-string echo-bar-text)))
 
-    ;; Display the text in Minibuf-0
+    ;; Display the text in Minibuf-0, as overlays don't show up
     (with-current-buffer " *Minibuf-0*"
-      (delete-region (point-min) (point-max))
-      (insert echo-bar-text))))
+      (when (= (point-min) (point-max))
+        (insert echo-bar-text)))))
 
 (defun echo-bar--minibuffer-setup ()
   "Setup the echo bar in the minibuffer."
