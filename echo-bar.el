@@ -141,8 +141,10 @@ If nil, don't update the echo bar automatically."
 
     ;; Display the text in Minibuf-0, as overlays don't show up
     (with-current-buffer " *Minibuf-0*"
+      (when (memq 'echo-bar (text-properties-at (point-min)))
+        (delete-region (point-min) (point-max)))
       (when (= (point-min) (point-max))
-        (insert echo-bar-text)))))
+        (insert (propertize echo-bar-text 'echo-bar t))))))
 
 (defun echo-bar--minibuffer-setup ()
   "Setup the echo bar in the minibuffer."
