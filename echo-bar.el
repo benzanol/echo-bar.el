@@ -38,6 +38,7 @@
 (require 'timer)
 (require 'minibuffer)
 (require 'overlay)
+(require 'seq)
 
 (defgroup echo-bar nil
   "Display text at the end of the echo area."
@@ -147,9 +148,10 @@ When REMOVE-DEAD is non-nil, also remove any dead overlays, i.e.,
 those without a buffer from the beginning of the internal list of
 overlays."
   (when remove-dead
-    ;; Remove any dead overlays from the beginning of the list
-    (while (null (overlay-buffer (car echo-bar-overlays)))
-      (pop echo-bar-overlays)))
+    ;; Remove all dead overlays from the list
+    (setq echo-bar-overlays
+          (seq-filter 'overlay-buffer echo-bar-overlays)))
+
   (let ((new-overlay (make-overlay (point-max)
                                    (point-max) buffer t t)))
     (push new-overlay echo-bar-overlays)
