@@ -30,7 +30,7 @@
 
 ;; To install, just run `M-x package-install RET echo-bar RET`.
 ;; To customize the text that gets displayed, set the variable
-;; `echo-bar-function` to the name of your own custom function.
+;; `echo-bar-format` to the mode-line like format of the echo-bar.
 ;; To turn the echo bar on or off, use `echo-bar-mode`.
 
 ;;; Code:
@@ -48,10 +48,12 @@
   :group 'echo-bar
   :type 'number)
 
-(defcustom echo-bar-function #'echo-bar-default-function
-  "Function that returns the text displayed in the echo bar."
+(defcustom echo-bar-format
+  '(:eval (format-time-string "%b %d | %H:%M:%S"))
+  "Template for displaying echo line in the minibuffer.
+See `mode-line-format' for more info"
   :group 'echo-bar
-  :type 'function)
+  :type 'sexp)
 
 (defcustom echo-bar-minibuffer t
   "If non-nil, also display the echo bar when in the minibuffer."
@@ -153,14 +155,9 @@ If nil, don't update the echo bar automatically."
   (echo-bar-update))
 
 (defun echo-bar-update ()
-  "Get new text to be displayed from `echo-bar-default-function`."
+  "Get new text to be displayed from `echo-bar-format`."
   (interactive)
-  (echo-bar-set-text (funcall echo-bar-function)))
-
-(defun echo-bar-default-function ()
-  "Default value of `echo-bar-function`.
-Displays the date and time in a basic format."
-  (format-time-string "%b %d | %H:%M:%S"))
+  (echo-bar-set-text (format-mode-line echo-bar-format)))
 
 (provide 'echo-bar)
 ;;; echo-bar.el ends here
