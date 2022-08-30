@@ -88,14 +88,14 @@ If nil, don't update the echo bar automatically."
   (interactive)
   ;; Disable any existing echo bar to remove conflicts
   (echo-bar-disable)
-  
+
   ;; Create overlays in each echo area buffer
   (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*"))
     (with-current-buffer buf
       (remove-overlays (point-min) (point-max))
       (push (make-overlay (point-min) (point-max) nil nil t)
             echo-bar-overlays)))
-  
+
   ;; Start the timer to automatically update
   (when echo-bar-update-interval
     (run-with-timer 0 echo-bar-update-interval 'echo-bar-update))
@@ -133,7 +133,7 @@ If nil, don't update the echo bar automatically."
     ;; Remove any dead overlays from the minibuffer from the beginning of the list
     (while (null (overlay-buffer (car echo-bar-overlays)))
       (pop echo-bar-overlays))
-    
+
     ;; Add the correct text to each echo bar overlay
     (dolist (o echo-bar-overlays)
       (when (overlay-buffer o)
@@ -141,7 +141,7 @@ If nil, don't update the echo bar automatically."
 
     ;; Display the text in Minibuf-0, as overlays don't show up
     (with-current-buffer " *Minibuf-0*"
-      (when (memq 'echo-bar (text-properties-at (point-min)))
+      (when (get-text-property (point-min) 'echo-bar)
         (delete-region (point-min) (point-max)))
       (when (= (point-min) (point-max))
         (insert (propertize echo-bar-text 'echo-bar t))))))
