@@ -88,14 +88,13 @@ If nil, don't update the echo bar automatically."
   (interactive)
   ;; Disable any existing echo bar to remove conflicts
   (echo-bar-disable)
-  
+
   ;; Create overlays in each echo area buffer
   (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*"))
     (with-current-buffer buf
       (remove-overlays (point-min) (point-max))
-      (push (make-overlay (point-min) (point-max) nil nil t)
-            echo-bar-overlays)))
-  
+      (echo-bar--new-overlay)))
+
   ;; Start the timer to automatically update
   (when echo-bar-update-interval
     (run-with-timer 0 echo-bar-update-interval 'echo-bar-update))
@@ -130,10 +129,6 @@ If nil, don't update the echo bar automatically."
 
     (setq echo-bar-text (concat spc text))
 
-    ;; Remove any dead overlays from the minibuffer from the beginning of the list
-    (while (null (overlay-buffer (car echo-bar-overlays)))
-      (pop echo-bar-overlays))
-    
     ;; Add the correct text to each echo bar overlay
     (dolist (o echo-bar-overlays)
       (when (overlay-buffer o)
@@ -146,10 +141,23 @@ If nil, don't update the echo bar automatically."
       (when (= (point-min) (point-max))
         (insert (propertize echo-bar-text 'echo-bar t))))))
 
+(defun echo-bar--new-overlay (&optional remove-dead buffer)
+  "Add new echo-bar overlay to BUFFER.
+When REMOVE-DEAD is non-nil, also remove any dead overlays, i.e.,
+those without a buffer from the beginning of the internal list of
+overlays."
+  (when remove-dead
+    ;; Remove any dead overlays from the beginning of the list
+    (while (null (overlay-buffer (car echo-bar-overlays)))
+      (pop echo-bar-overlays)))
+  (let ((new-overlay (make-overlay (point-max)
+                                   (point-max) buffer t t)))
+    (push new-overlay echo-bar-overlays)
+    new-overlay))
+
 (defun echo-bar--minibuffer-setup ()
   "Setup the echo bar in the minibuffer."
-  (push (make-overlay (point-max) (point-max) nil t t) echo-bar-overlays)
-  (overlay-put (car echo-bar-overlays) 'priority 1)
+  (overlay-put (echo-bar--new-overlay t) 'priority 1)
   (echo-bar-update))
 
 (defun echo-bar-update ()
