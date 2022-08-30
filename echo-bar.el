@@ -44,15 +44,27 @@
   "Display text at the end of the echo area."
   :group 'applications)
 
-(defcustom echo-bar-right-padding 2
-  "Number of columns between the text and right margin."
-  :group 'echo-bar
-  :type 'number)
-
 (defcustom echo-bar-function #'echo-bar-default-function
   "Function that returns the text displayed in the echo bar."
   :group 'echo-bar
   :type 'function)
+
+(defcustom echo-bar-format
+  '(:eval (format-time-string "%b %d | %H:%M:%S"))
+  "Format of the text displayed in the echo bar.
+
+This format will only apply if `echo-bar-function' is set to
+`echo-bar-default-function', otherwise, the output of
+`echo-bar-function' will be used.
+
+See `mode-line-format' for more info about the required format."
+  :group 'echo-bar
+  :type 'sexp)
+
+(defcustom echo-bar-right-padding 2
+  "Number of columns between the text and right margin."
+  :group 'echo-bar
+  :type 'number)
 
 (defcustom echo-bar-minibuffer t
   "If non-nil, also display the echo bar when in the minibuffer."
@@ -168,9 +180,9 @@ overlays."
   (echo-bar-set-text (funcall echo-bar-function)))
 
 (defun echo-bar-default-function ()
-  "Default value of `echo-bar-function`.
-Displays the date and time in a basic format."
-  (format-time-string "%b %d | %H:%M:%S"))
+  "The default function to use for the contents of the echo bar.
+Returns the formatted text from `echo-bar-format'."
+  (format-mode-line echo-bar-format))
 
 (provide 'echo-bar)
 ;;; echo-bar.el ends here

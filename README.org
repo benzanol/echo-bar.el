@@ -1,10 +1,12 @@
 #+TITLE: echo-bar.el
 Display a custom status at the end of the echo area
 
-** Customization
-Define a function that returns the text you want to be displayed at the right of the minibuffer/echo area, and then set =echo-bar-function= to the name of that function.
+* Customization
+The format of the echo bar can be set using the =echo-bar-format= variable. This variable uses the same format as =mode-line-format=.
 
-** Screenshots
+Alternatively, you can set =echo-bar-function= to a custom function to be run every time the echo bar updates, and the output of this function will be used as the contents of the echo bar.
+
+* Screenshots
 Displayed at the end of the echo area
 [[./screenshots/echo-area-example.png]]
 
