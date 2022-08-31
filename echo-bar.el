@@ -102,8 +102,10 @@ If nil, don't update the echo bar automatically."
   ;; Disable any existing echo bar to remove conflicts
   (echo-bar-disable)
 
-  ;; Create overlays in each echo area buffer
-  (dolist (buf '(" *Echo Area 0*" " *Echo Area 1*"))
+  ;; Create overlays in each echo area buffer. Use `get-buffer-create' to make
+  ;; sure that the buffer is created even if no messages were outputted before
+  (dolist (buf (mapcar #'get-buffer-create
+                       '(" *Echo Area 0*" " *Echo Area 1*")))
     (with-current-buffer buf
       (remove-overlays (point-min) (point-max))
       (echo-bar--new-overlay)))
@@ -125,7 +127,8 @@ If nil, don't update the echo bar automatically."
   (setq echo-bar-overlays nil)
 
   ;; Remove text from Minibuf-0
-  (with-current-buffer " *Minibuf-0*"
+  (with-current-buffer (window-buffer
+                        (minibuffer-window))
     (delete-region (point-min) (point-max)))
 
   ;; Cancel the update timer
@@ -148,7 +151,8 @@ If nil, don't update the echo bar automatically."
         (overlay-put o 'after-string echo-bar-text)))
 
     ;; Display the text in Minibuf-0, as overlays don't show up
-    (with-current-buffer " *Minibuf-0*"
+    (with-current-buffer (window-buffer
+                          (minibuffer-window))
       (when (get-text-property (point-min) 'echo-bar)
         (delete-region (point-min) (point-max)))
       (when (= (point-min) (point-max))
