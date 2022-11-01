@@ -140,6 +140,9 @@ If nil, don't update the echo bar automatically."
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
   (let* ((wid (+ (string-width text) echo-bar-right-padding))
+         ;; Maximum length for the echo area message before wrap to next line
+         (max-len (- (frame-width) wid 5))
+         ;; Align the text to the correct width to make it right aligned
          (spc (propertize " " 'cursor 1 'display
                           `(space :align-to (- right-fringe ,wid)))))
 
@@ -148,11 +151,17 @@ If nil, don't update the echo bar automatically."
     ;; Add the correct text to each echo bar overlay
     (dolist (o echo-bar-overlays)
       (when (overlay-buffer o)
-        (overlay-put o 'after-string echo-bar-text)))
+
+        (with-current-buffer (overlay-buffer o)
+          ;; Wrap the text to the next line if the echo bar text is too long
+          (if (> (point-max) max-len)
+              (overlay-put o 'after-string (concat "\n" echo-bar-text))
+            (overlay-put o 'after-string echo-bar-text)))))
 
     ;; Display the text in Minibuf-0, as overlays don't show up
     (with-current-buffer (window-buffer
                           (minibuffer-window))
+      ;; Don't override existing text in minibuffer, such as ispell
       (when (get-text-property (point-min) 'echo-bar)
         (delete-region (point-min) (point-max)))
       (when (= (point-min) (point-max))
