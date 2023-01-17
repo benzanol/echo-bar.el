@@ -140,10 +140,13 @@ If nil, don't update the echo bar automatically."
 ;; TODO: Use function `string-pixel-width' after 29.1
 (defun echo-bar--string-pixel-width (str)
   "Return the width of STR in pixels."
-  (if (fboundp #'string-pixel-width)
-      (string-pixel-width str)
-    (require 'shr)
-    (shr-string-pixel-width str)))
+
+  ;; Make sure the temp buffer settings match the minibuffer settings
+  (with-selected-window (minibuffer-window)
+    (if (fboundp #'string-pixel-width)
+        (string-pixel-width str)
+      (require 'shr)
+      (shr-string-pixel-width str))))
 
 (defun echo-bar--str-len (str)
   "Calculate STR in pixel width."
