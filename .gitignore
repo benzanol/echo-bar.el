@@ -1,0 +1,6 @@
+# compiled
+*.elc
+
+# package files
+/.eask
+/dist
