@@ -172,7 +172,7 @@ If nil, don't update the echo bar automatically."
 
         (with-current-buffer (overlay-buffer o)
           ;; Wrap the text to the next line if the echo bar text is too long
-          (if (> (point-max) max-len)
+          (if (> (mod (point-max) (frame-width)) max-len)
               (overlay-put o 'after-string (concat "\n" echo-bar-text))
             (overlay-put o 'after-string echo-bar-text)))))
 
