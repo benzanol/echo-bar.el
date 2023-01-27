@@ -209,7 +209,8 @@ overlays."
 (defun echo-bar-update ()
   "Get new text to be displayed from `echo-bar-default-function`."
   (interactive)
-  (echo-bar-set-text (funcall echo-bar-function)))
+  (when echo-bar-mode
+    (echo-bar-set-text (funcall echo-bar-function))))
 
 (defun echo-bar-default-function ()
   "The default function to use for the contents of the echo bar.
