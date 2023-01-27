@@ -113,6 +113,7 @@ If nil, don't update the echo bar automatically."
   ;; Start the timer to automatically update
   (when echo-bar-update-interval
     (run-with-timer 0 echo-bar-update-interval 'echo-bar-update))
+  (echo-bar-update) ;; Update immediately
 
   ;; Add the setup function to the minibuffer hook
   (when echo-bar-minibuffer
