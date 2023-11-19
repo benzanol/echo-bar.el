@@ -183,7 +183,8 @@ If nil, don't update the echo bar automatically."
       ;; Don't override existing text in minibuffer, such as ispell
       (when (get-text-property (point-min) 'echo-bar)
         (delete-region (point-min) (point-max)))
-      (when (= (point-min) (point-max))
+      (when (and echo-bar-minibuffer
+                 (= (point-min) (point-max)))
         (insert (propertize echo-bar-text 'echo-bar t))))))
 
 (defun echo-bar--new-overlay (&optional remove-dead buffer)
