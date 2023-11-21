@@ -116,8 +116,7 @@ If nil, don't update the echo bar automatically."
   (echo-bar-update) ;; Update immediately
 
   ;; Add the setup function to the minibuffer hook
-  (when echo-bar-minibuffer
-    (add-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup)))
+  (add-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup))
 
 ;;;###autoload
 (defun echo-bar-disable ()
@@ -137,6 +136,7 @@ If nil, don't update the echo bar automatically."
 
   ;; Remove the setup function from the minibuffer hook
   (remove-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup))
+
 
 ;; TODO: Use function `string-pixel-width' after 29.1
 (defun echo-bar--string-pixel-width (str)
@@ -177,14 +177,17 @@ If nil, don't update the echo bar automatically."
               (overlay-put o 'after-string (concat "\n" echo-bar-text))
             (overlay-put o 'after-string echo-bar-text)))))
 
-    ;; Display the text in Minibuf-0, as overlays don't show up
-    (with-current-buffer (window-buffer
-                          (minibuffer-window))
-      ;; Don't override existing text in minibuffer, such as ispell
-      (when (get-text-property (point-min) 'echo-bar)
-        (delete-region (point-min) (point-max)))
-      (when (= (point-min) (point-max))
-        (insert (propertize echo-bar-text 'echo-bar t))))))
+
+    (with-current-buffer " *Minibuf-0*"
+      ;; If the minibuffer is not Minibuf-0, then the user is using the minibuffer
+      (when (eq (current-buffer) (window-buffer (minibuffer-window)))
+
+        ;; Don't override existing text in minibuffer, such as ispell
+        (when (get-text-property (point-min) 'echo-bar)
+          (delete-region (point-min) (point-max)))
+        (when (= (point-min) (point-max))
+          ;; Display the full text in Minibuf-0, as overlays don't show up
+          (insert (propertize echo-bar-text 'echo-bar t)))))))
 
 (defun echo-bar--new-overlay (&optional remove-dead buffer)
   "Add new echo-bar overlay to BUFFER.
@@ -203,8 +206,9 @@ overlays."
 
 (defun echo-bar--minibuffer-setup ()
   "Setup the echo bar in the minibuffer."
-  (overlay-put (echo-bar--new-overlay t) 'priority 1)
-  (echo-bar-update))
+  (when echo-bar-minibuffer
+    (overlay-put (echo-bar--new-overlay t) 'priority 1)
+    (echo-bar-update)))
 
 (defun echo-bar-update ()
   "Get new text to be displayed from `echo-bar-default-function`."
