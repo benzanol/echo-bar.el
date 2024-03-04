@@ -161,7 +161,8 @@ If nil, don't update the echo bar automatically."
   (let* ((wid (+ (echo-bar--str-len text) echo-bar-right-padding
                  (if (and (display-graphic-p)
                           (> (nth 1 (window-fringes)) 0)
-                          (not overflow-newline-into-fringe))
+                          (not overflow-newline-into-fringe)
+                          (<= echo-bar-right-padding 0))
                      1
                    0)))
          ;; Maximum length for the echo area message before wrap to next line
