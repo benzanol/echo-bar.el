@@ -158,7 +158,13 @@ If nil, don't update the echo bar automatically."
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
-  (let* ((wid (+ (echo-bar--str-len text) echo-bar-right-padding))
+  (let* ((wid (+ (echo-bar--str-len text) echo-bar-right-padding
+                 (if (and (display-graphic-p)
+                          (> (nth 1 (window-fringes)) 0)
+                          (not overflow-newline-into-fringe)
+                          (<= echo-bar-right-padding 0))
+                     1
+                   0)))
          ;; Maximum length for the echo area message before wrap to next line
          (max-len (- (frame-width) wid 5))
          ;; Align the text to the correct width to make it right aligned
