@@ -158,42 +158,42 @@ If nil, don't update the echo bar automatically."
 
 (defun echo-bar-set-text (text)
   "Set the text displayed by the echo bar to TEXT."
-  (let* ((wid (+ (echo-bar--str-len text) echo-bar-right-padding
-                 (if (and (display-graphic-p)
-                          (> (nth 1 (window-fringes)) 0)
-                          (not overflow-newline-into-fringe)
-                          (<= echo-bar-right-padding 0))
-                     1
-                   0)))
-         ;; Maximum length for the echo area message before wrap to next line
-         (max-len (- (frame-width) wid 5))
-         ;; Align the text to the correct width to make it right aligned
-         (spc (propertize " " 'cursor 1 'display
-                          `(space :align-to (- right-fringe ,wid)))))
+  (with-selected-frame (or default-minibuffer-frame (selected-frame))
+    (let* ((wid (+ (echo-bar--str-len text) echo-bar-right-padding
+                   (if (and (display-graphic-p)
+                            (> (nth 1 (window-fringes)) 0)
+                            (not overflow-newline-into-fringe)
+                            (<= echo-bar-right-padding 0))
+                       1
+                     0)))
+           ;; Maximum length for the echo area message before wrap to next line
+           (max-len (- (frame-width) wid 5))
+           ;; Align the text to the correct width to make it right aligned
+           (spc (propertize " " 'cursor 1 'display
+                            `(space :align-to (- right-fringe ,wid)))))
 
-    (setq echo-bar-text (concat spc text))
+      (setq echo-bar-text (concat spc text))
 
-    ;; Add the correct text to each echo bar overlay
-    (dolist (o echo-bar-overlays)
-      (when (overlay-buffer o)
+      ;; Add the correct text to each echo bar overlay
+      (dolist (o echo-bar-overlays)
+        (when (overlay-buffer o)
 
-        (with-current-buffer (overlay-buffer o)
-          ;; Wrap the text to the next line if the echo bar text is too long
-          (if (> (mod (point-max) (frame-width)) max-len)
-              (overlay-put o 'after-string (concat "\n" echo-bar-text))
-            (overlay-put o 'after-string echo-bar-text)))))
+          (with-current-buffer (overlay-buffer o)
+            ;; Wrap the text to the next line if the echo bar text is too long
+            (if (> (mod (point-max) (frame-width)) max-len)
+                (overlay-put o 'after-string (concat "\n" echo-bar-text))
+              (overlay-put o 'after-string echo-bar-text)))))
 
+      (with-current-buffer " *Minibuf-0*"
+        ;; If the minibuffer is not Minibuf-0, then the user is using the minibuffer
+        (when (eq (current-buffer) (window-buffer (minibuffer-window)))
 
-    (with-current-buffer " *Minibuf-0*"
-      ;; If the minibuffer is not Minibuf-0, then the user is using the minibuffer
-      (when (eq (current-buffer) (window-buffer (minibuffer-window)))
-
-        ;; Don't override existing text in minibuffer, such as ispell
-        (when (get-text-property (point-min) 'echo-bar)
-          (delete-region (point-min) (point-max)))
-        (when (= (point-min) (point-max))
-          ;; Display the full text in Minibuf-0, as overlays don't show up
-          (insert (propertize echo-bar-text 'echo-bar t)))))))
+          ;; Don't override existing text in minibuffer, such as ispell
+          (when (get-text-property (point-min) 'echo-bar)
+            (delete-region (point-min) (point-max)))
+          (when (= (point-min) (point-max))
+            ;; Display the full text in Minibuf-0, as overlays don't show up
+            (insert (propertize echo-bar-text 'echo-bar t))))))))
 
 (defun echo-bar--new-overlay (&optional remove-dead buffer)
   "Add new echo-bar overlay to BUFFER.
