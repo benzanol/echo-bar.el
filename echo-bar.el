@@ -87,6 +87,21 @@ If nil, don't update the echo bar automatically."
 (defvar echo-bar-overlays nil
   "List of overlays displaying the echo bar contents.")
 
+(defmacro echo-bar-with-no-redisplay (&rest body)
+  "Execute BODY without any redisplay execution."
+  (declare (indent 0) (debug t))
+  `(let ((inhibit-redisplay t)
+         (inhibit-modification-hooks t)
+         (inhibit-point-motion-hooks t)
+         after-focus-change-function
+         buffer-list-update-hook
+         display-buffer-alist
+         window-configuration-change-hook
+         window-scroll-functions
+         window-size-change-functions
+         window-state-change-hook)
+     ,@body))
+
 ;;;###autoload
 (define-minor-mode echo-bar-mode
   "Display text at the end of the echo area."
@@ -220,7 +235,8 @@ overlays."
   "Get new text to be displayed from `echo-bar-default-function`."
   (interactive)
   (when echo-bar-mode
-    (echo-bar-set-text (funcall echo-bar-function))))
+    (echo-bar-with-no-redisplay
+      (echo-bar-set-text (funcall echo-bar-function)))))
 
 (defun echo-bar-default-function ()
   "The default function to use for the contents of the echo bar.
