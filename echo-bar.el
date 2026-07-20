@@ -90,7 +90,8 @@ If nil, don't update the echo bar automatically."
 (defmacro echo-bar-with-no-redisplay (&rest body)
   "Execute BODY without any redisplay execution."
   (declare (indent 0) (debug t))
-  `(let ((inhibit-redisplay t)
+  `(let ((inhibit-read-only t)
+         (inhibit-redisplay t)
          (inhibit-modification-hooks t)
          (inhibit-point-motion-hooks t)
          after-focus-change-function
