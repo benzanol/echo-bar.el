@@ -93,7 +93,7 @@ If nil, don't update the echo bar automatically."
   `(let ((inhibit-read-only t)
          (inhibit-redisplay t)
          (inhibit-modification-hooks t)
-         (inhibit-point-motion-hooks t)
+         (cursor-sensor-inhibit t)
          after-focus-change-function
          buffer-list-update-hook
          display-buffer-alist
