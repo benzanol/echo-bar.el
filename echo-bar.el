@@ -23,6 +23,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 ;;; Commentary:
 
 ;; This package will allow you to display a custom status at the end
@@ -33,12 +34,14 @@
 ;; `echo-bar-function` to the name of your own custom function.
 ;; To turn the echo bar on or off, use `echo-bar-mode`.
 
+
 ;;; Code:
 
-(require 'timer)
 (require 'minibuffer)
 (require 'overlay)
 (require 'seq)
+(require 'timer)
+
 
 (defgroup echo-bar nil
   "Display text at the end of the echo area."
@@ -103,7 +106,9 @@ If nil, don't update the echo bar automatically."
          window-state-change-hook)
      ,@body))
 
+
 ;;;###autoload
+
 (define-minor-mode echo-bar-mode
   "Display text at the end of the echo area."
   :global t
@@ -111,12 +116,16 @@ If nil, don't update the echo bar automatically."
       (echo-bar-enable)
     (echo-bar-disable)))
 
+
 ;;;###autoload
+
 (defun echo-bar-enable ()
   "Turn on the echo bar."
   (interactive)
   ;; Disable any existing echo bar to remove conflicts
-  (echo-bar-disable)
+  (with-demoted-errors "Error disabling echo bar: %s"
+    (echo-bar-disable))
+  (setq echo-bar-mode t)
 
   ;; Create overlays in each echo area buffer. Use `get-buffer-create' to make
   ;; sure that the buffer is created even if no messages were outputted before
@@ -134,18 +143,23 @@ If nil, don't update the echo bar automatically."
   ;; Add the setup function to the minibuffer hook
   (add-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup))
 
+
 ;;;###autoload
+
 (defun echo-bar-disable ()
   "Turn off the echo bar."
   (interactive)
   ;; Remove echo bar overlays
-  (mapc 'delete-overlay echo-bar-overlays)
-  (setq echo-bar-overlays nil)
+  (echo-bar-with-no-redisplay
+    (dolist (ol echo-bar-overlays)
+      (when (overlay-buffer ol) (delete-overlay ol)))
+    (setq echo-bar-overlays nil)
+    (setq echo-bar-mode nil)
 
-  ;; Remove text from Minibuf-0
-  (with-current-buffer (window-buffer
-                        (minibuffer-window))
-    (delete-region (point-min) (point-max)))
+    ;; Remove text from Minibuf-0
+    (with-current-buffer (window-buffer
+                          (minibuffer-window))
+      (delete-region (point-min) (point-max))))
 
   ;; Cancel the update timer
   (cancel-function-timers #'echo-bar-update)
@@ -245,4 +259,6 @@ Returns the formatted text from `echo-bar-format'."
   (format-mode-line echo-bar-format))
 
 (provide 'echo-bar)
+
+
 ;;; echo-bar.el ends here
