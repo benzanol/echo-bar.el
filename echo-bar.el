@@ -81,14 +81,37 @@ If nil, don't update the echo bar automatically."
   :group 'echo-bar
   :type 'number)
 
+(defcustom echo-bar-per-frame nil
+  "Display different echo-bar content on every frame.
+
+The `echo-bar-function' will be called once on each frame.
+
+Re-run `echo-bar-enable' must be re-run after setting this variable to
+ensure that it takes effect. Additionally, `echo-bar-enable' must be
+re-run each time a frame is added."
+  :group 'echo-bar
+  :type 'boolean)
+
+(defcustom echo-bar-frame-predicate #'echo-bar-default-frame-predicate
+  "Only create per-frame overlays for frames satisfying this predicate.
+
+This is only relevant when `echo-bar-per-frame' is non-nil."
+  :group 'echo-bar
+  :type 'function)
+
 (defvar echo-bar-timer nil
   "Timer used to update the echo bar.")
 
 (defvar echo-bar-text nil
   "The text currently displayed in the echo bar.")
 
+(defvar echo-bar-minibuffer-overlay nil)
+
 (defvar echo-bar-overlays nil
-  "List of overlays displaying the echo bar contents.")
+  "Alist mapping frames to overlays displaying the echo bar contents.
+
+If `echo-bar-per-frame' is `nil', then the alist will have a single
+entry with key `t', that will be used on all frames.")
 
 (defmacro echo-bar-with-no-redisplay (&rest body)
   "Execute BODY without any redisplay execution."
@@ -127,13 +150,15 @@ If nil, don't update the echo bar automatically."
     (echo-bar-disable))
   (setq echo-bar-mode t)
 
-  ;; Create overlays in each echo area buffer. Use `get-buffer-create' to make
-  ;; sure that the buffer is created even if no messages were outputted before
-  (dolist (buf (mapcar #'get-buffer-create
-                       '(" *Echo Area 0*" " *Echo Area 1*")))
-    (with-current-buffer buf
-      (remove-overlays (point-min) (point-max))
-      (echo-bar--new-overlay)))
+  ;; Create overlays for each relevant frame. If `echo-bar-per-frame' is nil,
+  ;; then only create 1 set of overlays
+  ;; Remove old overlays
+  (dolist (buf (mapcar #'get-buffer-create '(" *Echo Area 0*" " *Echo Area 1*" " *Minibuf-0*")))
+    (with-current-buffer buf (remove-overlays (point-min) (point-max))))
+  (let* ((frames (if (not echo-bar-per-frame) (list t)
+                   (seq-filter echo-bar-frame-predicate (frame-list)))))
+    (setq echo-bar-overlays (mapcar (lambda (f) (list f nil nil nil)) frames)))
+  (echo-bar--ensure-overlays)
 
   ;; Start the timer to automatically update
   (when echo-bar-update-interval
@@ -144,6 +169,19 @@ If nil, don't update the echo bar automatically."
   (add-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup))
 
 
+(defun echo-bar--ensure-overlays ()
+  "Ensure that all of the correct overlays exist.
+
+`echo-bar-overlays' should be a list of (frame EA0-OL EA1-OL) where
+EA0-OL is in *Echo Area 0*, and EA1-OL is in *Echo Area 1*."
+  (pcase-dolist (`(,idx . ,buf) '((1 . " *Echo Area 0*") (2 . " *Echo Area 1*") (3 . " *Minibuf-0*")))
+    (with-current-buffer buf
+      (dolist (frame-ols echo-bar-overlays)
+        (unless (and (nth idx frame-ols) (overlay-buffer (nth idx frame-ols)))
+          (setf (nth idx frame-ols)
+                (echo-bar--new-overlay (car frame-ols) (current-buffer))))))))
+
+
 ;;;###autoload
 
 (defun echo-bar-disable ()
@@ -151,14 +189,11 @@ If nil, don't update the echo bar automatically."
   (interactive)
   ;; Remove echo bar overlays
   (echo-bar-with-no-redisplay
-    (dolist (ol echo-bar-overlays)
-      (when (overlay-buffer ol) (delete-overlay ol)))
+    (dolist (frame-ols echo-bar-overlays)
+      (dolist (ol (cdr frame-ols))
+        (when (overlay-buffer ol) (delete-overlay ol))))
     (setq echo-bar-overlays nil)
-    (setq echo-bar-mode nil)
-
-    ;; Remove text from Minibuf-0
-    (with-current-buffer " *Minibuf-0*"
-      (delete-region (point-min) (point-max))))
+    (setq echo-bar-mode nil))
 
   ;; Cancel the update timer
   (cancel-function-timers #'echo-bar-update)
@@ -167,7 +202,6 @@ If nil, don't update the echo bar automatically."
   (remove-hook 'minibuffer-setup-hook #'echo-bar--minibuffer-setup))
 
 
-;; TODO: Use function `string-pixel-width' after 29.1
 (defun echo-bar--string-pixel-width (str)
   "Return the width of STR in pixels."
 
@@ -185,64 +219,71 @@ If nil, don't update the echo bar automatically."
     (+ (/ len width)
        (if (zerop (% len width)) 0 1))))  ; add one if exceeed
 
-(defun echo-bar-set-text (text)
-  "Set the text displayed by the echo bar to TEXT."
-  (with-selected-frame (or default-minibuffer-frame (selected-frame))
-    (let* ((wid (+ (echo-bar--str-len text) echo-bar-right-padding
-                   (if (and (display-graphic-p)
-                            (> (nth 1 (window-fringes)) 0)
-                            (not overflow-newline-into-fringe)
-                            (<= echo-bar-right-padding 0))
-                       1
-                     0)))
-           ;; Maximum length for the echo area message before wrap to next line
-           (max-len (- (frame-width) wid 5))
-           ;; Align the text to the correct width to make it right aligned
-           (spc (propertize " " 'cursor 1 'display
-                            `(space :align-to (- right-fringe ,wid)))))
+(defun echo-bar-set-text (text-or-fn)
+  "Set the text displayed by the echo bar to TEXT-OR-FN.
 
-      (setq echo-bar-text (concat spc text))
+TEXT-OR-FN is either a string, or a 0-argument function (that will be
+called in each frame) to generate a per-frame string."
 
-      ;; Add the correct text to each echo bar overlay
-      (dolist (o echo-bar-overlays)
-        (when (overlay-buffer o)
+  ;; Loop over all of the frame entries
+  (dolist (frame-ols echo-bar-overlays)
+    (with-selected-frame (or (when (frame-live-p (car frame-ols)) (car frame-ols))
+                             default-minibuffer-frame (selected-frame))
 
-          (with-current-buffer (overlay-buffer o)
-            ;; Wrap the text to the next line if the echo bar text is too long
-            (if (> (mod (point-max) (frame-width)) max-len)
-                (overlay-put o 'after-string (concat "\n" echo-bar-text))
-              (overlay-put o 'after-string echo-bar-text)))))
+      (let* ((text (if (stringp text-or-fn) text-or-fn (funcall text-or-fn)))
+             (wid (+ (echo-bar--str-len text) echo-bar-right-padding
+                     (if (and (display-graphic-p)
+                              (> (nth 1 (window-fringes)) 0)
+                              (not overflow-newline-into-fringe)
+                              (<= echo-bar-right-padding 0))
+                         1
+                       0)))
+             ;; Maximum length for the echo area message before wrap to next line
+             (max-len (- (frame-width) wid 5))
+             ;; Align the text to the correct width to make it right aligned
+             (spc (propertize " " 'cursor 1 'display
+                              `(space :align-to (- right-fringe ,wid)))))
 
-      (with-current-buffer " *Minibuf-0*"
-        ;; If the minibuffer is not Minibuf-0, then the user is using the minibuffer
-        (when (eq (current-buffer) (window-buffer (minibuffer-window)))
+        ;; Re-create the overlays if they were deleted
+        (echo-bar--ensure-overlays)
 
-          ;; Don't override existing text in minibuffer, such as ispell
-          (when (get-text-property (point-min) 'echo-bar)
-            (delete-region (point-min) (point-max)))
-          (when (= (point-min) (point-max))
-            ;; Display the full text in Minibuf-0, as overlays don't show up
-            (insert (propertize echo-bar-text 'echo-bar t))))))))
+        (setq echo-bar-text (concat spc text))
 
-(defun echo-bar--new-overlay (&optional remove-dead buffer)
-  "Add new echo-bar overlay to BUFFER.
-When REMOVE-DEAD is non-nil, also remove any dead overlays, i.e.,
-those without a buffer from the beginning of the internal list of
-overlays."
+        (when (and echo-bar-minibuffer-overlay (overlay-buffer echo-bar-minibuffer-overlay)
+                   (minibuffer-window-active-p (minibuffer-window (selected-frame))))
+          (overlay-put echo-bar-minibuffer-overlay 'after-string echo-bar-text))
+
+        ;; Add the correct text to each echo bar overlay
+        (dolist (ol (cdr frame-ols))
+          (when (overlay-buffer ol)
+
+            (with-current-buffer (overlay-buffer ol)
+              ;; Wrap the text to the next line if the echo bar text is too long
+              (if (> (mod (point-max) (frame-width)) max-len)
+                  (overlay-put ol 'after-string (concat "\n" echo-bar-text))
+                (overlay-put ol 'after-string echo-bar-text)))))))))
+
+(defun echo-bar--new-overlay (frame buffer &optional remove-dead)
+  "Add a new echo-bar overlay for FRAME in BUFFER.
+
+When REMOVE-DEAD is non-nil, also remove any dead overlays, i.e., those
+without a buffer."
   (when remove-dead
     ;; Remove all dead overlays from the list
-    (setq echo-bar-overlays
-          (seq-filter 'overlay-buffer echo-bar-overlays)))
+    (dolist (entry echo-bar-overlays)
+      (setcdr entry (seq-filter 'overlay-buffer (cdr entry)))))
 
-  (let ((new-overlay (make-overlay (point-max)
-                                   (point-max) buffer t t)))
-    (push new-overlay echo-bar-overlays)
-    new-overlay))
+  (let* ((ol (make-overlay (point-max) (point-max) (get-buffer buffer) t t)))
+    ;; Make the overlay only visible on one frame
+    (when echo-bar-per-frame
+      (overlay-put ol 'window (minibuffer-window (when (frame-live-p frame) frame))))
+    ol))
 
 (defun echo-bar--minibuffer-setup ()
   "Setup the echo bar in the minibuffer."
   (when echo-bar-minibuffer
-    (overlay-put (echo-bar--new-overlay t) 'priority 1)
+    (setq echo-bar-minibuffer-overlay (echo-bar--new-overlay t (current-buffer) t))
+    (overlay-put echo-bar-minibuffer-overlay 'priority 1)
     (echo-bar-update)))
 
 (defun echo-bar-update ()
@@ -250,12 +291,18 @@ overlays."
   (interactive)
   (when echo-bar-mode
     (echo-bar-with-no-redisplay
-      (echo-bar-set-text (funcall echo-bar-function)))))
+      (echo-bar-set-text echo-bar-function))))
 
 (defun echo-bar-default-function ()
   "The default function to use for the contents of the echo bar.
 Returns the formatted text from `echo-bar-format'."
   (format-mode-line echo-bar-format))
+
+(defun echo-bar-default-frame-predicate (frame)
+  "Default `echo-bar-frame-predicate'.
+
+Excludes child frames (posframe, mini-frame, company-box, etc.)."
+  (not (frame-parameter frame 'parent-frame)))
 
 (provide 'echo-bar)
 
