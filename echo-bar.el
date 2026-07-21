@@ -250,7 +250,7 @@ called in each frame) to generate a per-frame string."
         (setq echo-bar-text (concat spc text))
 
         (when (and echo-bar-minibuffer-overlay (overlay-buffer echo-bar-minibuffer-overlay)
-                   (minibuffer-window-active-p (minibuffer-window (selected-frame))))
+                   (eq (selected-window) (minibuffer-window (selected-frame))))
           (overlay-put echo-bar-minibuffer-overlay 'after-string echo-bar-text))
 
         ;; Add the correct text to each echo bar overlay
