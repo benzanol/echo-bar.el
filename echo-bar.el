@@ -157,8 +157,7 @@ If nil, don't update the echo bar automatically."
     (setq echo-bar-mode nil)
 
     ;; Remove text from Minibuf-0
-    (with-current-buffer (window-buffer
-                          (minibuffer-window))
+    (with-current-buffer " *Minibuf-0*"
       (delete-region (point-min) (point-max))))
 
   ;; Cancel the update timer
