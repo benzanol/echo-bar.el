@@ -304,6 +304,14 @@ Returns the formatted text from `echo-bar-format'."
 Excludes child frames (posframe, mini-frame, company-box, etc.)."
   (not (frame-parameter frame 'parent-frame)))
 
+(defun echo-bar-after-make-frame-function (_frame)
+  "Run this hook after creating a new frame."
+  ;; Create overlays for the new frame
+  (when (and echo-bar-mode echo-bar-per-frame)
+    (echo-bar-enable)))
+
+(add-hook 'after-make-frame-functions #'echo-bar-after-make-frame-function)
+
 (provide 'echo-bar)
 
 
