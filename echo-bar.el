@@ -172,10 +172,13 @@ entry with key `t', that will be used on all frames.")
 (defun echo-bar--ensure-overlays ()
   "Ensure that all of the correct overlays exist.
 
-`echo-bar-overlays' should be a list of (frame EA0-OL EA1-OL) where
-EA0-OL is in *Echo Area 0*, and EA1-OL is in *Echo Area 1*."
+`echo-bar-overlays' should be a list of (frame EA0-OL EA1-OL MB0-OL) where
+EA0-OL is in *Echo Area 0*, EA1-OL is in *Echo Area 1*, etc."
   (pcase-dolist (`(,idx . ,buf) '((1 . " *Echo Area 0*") (2 . " *Echo Area 1*") (3 . " *Minibuf-0*")))
     (with-current-buffer buf
+      ;; Minibuf-0 does not show up unless there is text in it. A space works fine.
+      (and (= idx 3) (= (point-min) (point-max)) (insert " "))
+      ;; Create an overlay corresponding to each frame
       (dolist (frame-ols echo-bar-overlays)
         (unless (and (nth idx frame-ols) (overlay-buffer (nth idx frame-ols)))
           (setf (nth idx frame-ols)
